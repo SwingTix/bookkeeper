@@ -1,0 +1,3 @@
+include CHANGES README LICENSE
+recursive-include swingtix/bookkeeper *.py *.html *.js
+

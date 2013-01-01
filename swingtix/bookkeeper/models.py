@@ -9,7 +9,9 @@ from collections import namedtuple
 AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo credit debit opening closing')
 
 class BookSet(models.Model):
-    """A set of accounts for an organization.  On desktop accounting software, one BookSet would typically represent one saved file.  """
+    """A set of accounts for an organization.  On desktop accounting software, one BookSet row would typically represent one saved file.
+    For example, you might have one BookSet for each country a corportation operates in.
+    """
 
     id = models.AutoField(primary_key=True)
     description = models.CharField(max_length=80)
@@ -21,6 +23,7 @@ class BookSet(models.Model):
         return self.description
 
 class ThirdParty(models.Model):
+    """Not yet complete.. """
     id = models.AutoField(primary_key=True)
 
     name = models.TextField()
@@ -28,12 +31,18 @@ class ThirdParty(models.Model):
         return '<ThirdParty orm %s %s>' % (self.name, self.id)
  
 class Account(models.Model):
+    """ A financial account in a double-entry bookkeeping bookset.
+
+    for example:
+        Assets::chequing
+        Expensses::bankfees
+    """
     accid = models.AutoField(primary_key=True)
     book = models.ForeignKey(BookSet, db_column='org', related_name='accounts')
     creditordebit = models.BooleanField("""False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.
         Accounts with 'creditordebit' set to True which increase with credit and decrease with debit.""")
 
-    name = models.TextField() #slugish?
+    name = models.TextField() #slugish?  Unique?
     description = models.TextField(blank=True)
 
     #parent account?
@@ -164,6 +173,11 @@ class Account(models.Model):
                 debit, credit, o_balance, balance)
 
 class Transaction(models.Model):
+    """ A transaction is a collection of AccountEntry rows (for different accounts) that sum to zero.
+
+    The most common transaction is a Debit (positive change) from one account and a Credit (negative change)
+    in another account.  Transactions involving more than two accounts are called "split transactions".
+    """
 
     tid = models.AutoField(primary_key=True)
 
@@ -185,6 +199,11 @@ class AccountEntryManager(models.Manager):
         return self.get(account=account, transaction=transaction)
 
 class AccountEntry(models.Model):
+    """A change in an account.
+
+    By convention, positive changes are known as "debits" while negative changes are "credits".
+    """
+
     class Meta:
         unique_together= (('account', 'transaction'),)
     def natural_key(self):
