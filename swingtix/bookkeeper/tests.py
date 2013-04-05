@@ -7,7 +7,7 @@ Replace this with more appropriate tests for your application.
 
 from django.test import TestCase
 
-from swingtix.bookkeeper.models import BookSet, Account, AccountEntryTuple
+from swingtix.bookkeeper.models import BookSet, Account, AccountEntryTuple, ThirdParty
 
 from decimal import Decimal
 from datetime import datetime
@@ -46,8 +46,19 @@ class SimpleTest(TestCase):
         self.expense.creditordebit = False
         self.expense.save()
 
+        self.ar = Account()
+        self.ar.book = self.book
+        self.ar.name = "ar"
+        self.ar.description = "Accounts Receivable"
+        self.ar.creditordebit = False
+        self.ar.save()
+
+
     def test_basic_entries(self):
-        
+        self.assertEqual(self.bank.balance(), Decimal("0.00"))
+        self.assertEqual(self.expense.balance(), Decimal("0.00"))
+        self.assertEqual(self.revenue.balance(), Decimal("0.00"))
+
         d0 = datetime(2010,1,1,1,0,59)
         d1 = datetime(2010,1,1,1,1,0)
         d2 = datetime(2010,1,1,1,1,1)
@@ -131,6 +142,66 @@ class SimpleTest(TestCase):
             AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
             AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
             ])
+
+    def test_AR(self):
+        self.assertEqual(self.bank.balance(), Decimal("0.00"))
+        self.assertEqual(self.expense.balance(), Decimal("0.00"))
+        self.assertEqual(self.revenue.balance(), Decimal("0.00"))
+        self.assertEqual(self.ar.balance(), Decimal("0.00"))
+
+        self.ar1 = ThirdParty()
+        self.ar1.account = self.ar
+        self.ar1.description = "Joe"
+        self.ar1.save()
+
+        self.ar2 = ThirdParty()
+        self.ar2.account = self.ar
+        self.ar2.description = "bob"
+        self.ar2.save()
+
+        self.assertEqual(self.ar.balance(), Decimal("0.00"))
+        self.assertEqual(self.ar1.balance(), Decimal("0.00"))
+        self.assertEqual(self.ar2.balance(), Decimal("0.00"))
+  
+        d0 = datetime(2010,1,1,1,0,59)
+        d1 = datetime(2010,1,1,1,1,0)
+        d2 = datetime(2010,1,1,1,1,1)
+        self.bank.debit(Decimal("31.41"), self.ar1, "Membership paid in cash", datetime=d2)
+        d3 = datetime(2010,1,1,1,1,2)
+        self.bank.debit(Decimal("12.97"), self.ar2, "Membership paid in cash", datetime=d3)
+        d4 = datetime(2010,1,1,1,1,3)
+        self.ar1.debit(Decimal("0.05"), self.revenue, "plastic bag", datetime=d4)
+        d5 = datetime(2010,1,1,1,1,4)
+
+        self.assertEqual(self.ar.balance(d1),      Decimal("0.00"))
+        self.assertEqual(self.ar1.balance(d1),     Decimal("0.00"))
+        self.assertEqual(self.ar2.balance(d1),     Decimal("0.00"))
+        self.assertEqual(self.revenue.balance(d1), Decimal("0.00"))
+        self.assertEqual(self.bank.balance(d1),    Decimal("0.00"))
+
+        self.assertEqual(self.ar.balance(d2),      Decimal("0.00"))
+        self.assertEqual(self.ar1.balance(d2),     Decimal("0.00"))
+        self.assertEqual(self.ar2.balance(d2),     Decimal("0.00"))
+        self.assertEqual(self.revenue.balance(d2), Decimal("0.00"))
+        self.assertEqual(self.bank.balance(d2),    Decimal("0.00"))
+
+        self.assertEqual(self.ar.balance(d3),      Decimal("-31.41"))
+        self.assertEqual(self.ar1.balance(d3),     Decimal("-31.41"))
+        self.assertEqual(self.ar2.balance(d3),     Decimal("0.00"))
+        self.assertEqual(self.revenue.balance(d3), Decimal("0.00"))
+        self.assertEqual(self.bank.balance(d3),    Decimal("31.41"))
+
+        self.assertEqual(self.ar.balance(d4),      Decimal("-44.38"))
+        self.assertEqual(self.ar1.balance(d4),     Decimal("-31.41"))
+        self.assertEqual(self.ar2.balance(d4),     Decimal("-12.97"))
+        self.assertEqual(self.revenue.balance(d4), Decimal("0.00"))
+        self.assertEqual(self.bank.balance(d4),    Decimal("44.38"))
+
+        self.assertEqual(self.ar.balance(d5),      Decimal("-44.33"))
+        self.assertEqual(self.ar1.balance(d5),     Decimal("-31.36"))
+        self.assertEqual(self.ar2.balance(d5),     Decimal("-12.97"))
+        self.assertEqual(self.revenue.balance(d5), Decimal("0.05"))
+        self.assertEqual(self.bank.balance(d5),    Decimal("44.38"))
 
     def test_create_load_accounts(self):
         book = BookSet()

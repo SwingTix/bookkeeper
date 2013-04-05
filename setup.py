@@ -14,6 +14,20 @@ setup(
     long_description=open('README').read(),
     zip_safe=False,
     include_package_data=True,
+    tests_require=[
+        'django>=1.3,<1.4',
+    ],
+   classifiers=[
+        'Development Status :: 3 - Alpha'
+        'Environment :: Web Environment',
+        'Framework :: Django',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: AGPL',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+    ],
 )
 
 
