@@ -29,28 +29,28 @@ class SimpleTest(TestCase):
         self.revenue.book = self.book
         self.revenue.name = "revenue"
         self.revenue.description = "Revenue"
-        self.revenue.creditordebit = True
+        self.revenue.positive_credit = True
         self.revenue.save()
         
         self.bank = Account()
         self.bank.book = self.book
         self.bank.name = "bank"
         self.bank.description = "Bank Account"
-        self.bank.creditordebit = False
+        self.bank.positive_credit = False
         self.bank.save()
         
         self.expense = Account()
         self.expense.book = self.book
         self.expense.name = "expense"
         self.expense.description = "Expenses"
-        self.expense.creditordebit = False
+        self.expense.positive_credit = False
         self.expense.save()
 
         self.ar = Account()
         self.ar.book = self.book
         self.ar.name = "ar"
         self.ar.description = "Accounts Receivable"
-        self.ar.creditordebit = False
+        self.ar.positive_credit = False
         self.ar.save()
 
 
@@ -212,21 +212,21 @@ class SimpleTest(TestCase):
         revenue.book = book
         revenue.name = "revenue"
         revenue.description = "Revenue"
-        revenue.creditordebit = True
+        revenue.positive_credit = True
         revenue.save()
         
         bank = Account()
         bank.book = book
         bank.name = "bank"
         bank.description = "Bank Account"
-        bank.creditordebit = False
+        bank.positive_credit = False
         bank.save()
         
         expense = Account()
         expense.book = book
         expense.name = "expense"
         expense.description = "Expenses"
-        expense.creditordebit = False
+        expense.positive_credit = False
         expense.save()
 
         e2 = book.load_account("expense")

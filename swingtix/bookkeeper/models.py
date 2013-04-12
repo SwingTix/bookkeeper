@@ -32,7 +32,7 @@ class _AccountBase(object):
         def _entries(self):
             "Return a queryset of the relevant AccountEntries."
 
-        delf _creditordebit(self):
+        delf _positive_credit(self):
     """
 
     #If, by historical accident, debits are negative and credits are positive in the database, set this to -1.  By default
@@ -94,7 +94,7 @@ class _AccountBase(object):
         b = r['b']
 
         flip = _AccountBase._DEBIT_IN_DB 
-        if self._creditordebit():
+        if self._positive_credit():
             flip *= -1
 
         if b == None:
@@ -106,7 +106,7 @@ class _AccountBase(object):
 
     def ledger(self, start=None, end=None):
         flip = _AccountBase._DEBIT_IN_DB 
-        if self._creditordebit():
+        if self._positive_credit():
             flip *= -1
 
         qs = self._entries()
@@ -142,8 +142,8 @@ class Account(models.Model, _AccountBase):
     """
     accid = models.AutoField(primary_key=True)
     book = models.ForeignKey(BookSet, db_column='org', related_name='accounts')
-    creditordebit = models.BooleanField("""False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.
-        Accounts with 'creditordebit' set increase with credit and decrease with debit.""")
+
+    positive_credit = models.BooleanField("""credit entries increase the value of this account.  Set to False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.""")
 
     name = models.TextField() #slugish?  Unique?
     description = models.TextField(blank=True)
@@ -160,7 +160,7 @@ class Account(models.Model, _AccountBase):
         ae.description = memo
         return ae
     def _entries(self): return self.entries
-    def _creditordebit(self): return self.creditordebit
+    def _positive_credit(self): return self.positive_credit
 
     def __unicode__(self):
         return '%s %s' % (self.organization.name, self.name)
@@ -169,7 +169,7 @@ class ThirdParty(models.Model, _AccountBase):
     """Represents an account with another party.  (eg. Account Receivable, or Account Payable.) """
     id = models.AutoField(primary_key=True)
 
-    name = models.TextField("name memo", description="this field is only used for displaying information during debugging.  It's best to use a OneToOne relationship with another tabel to hold all the information you actually need.")
+    name = models.TextField("name memo", help_text="this field is only used for displaying information during debugging.  It's best to use a OneToOne relationship with another tabel to hold all the information you actually need.")
 
     account = models.ForeignKey(Account, related_name="third_parties")
 
@@ -186,7 +186,7 @@ class ThirdParty(models.Model, _AccountBase):
         return ae
 
     def _entries(self): return AccountEntry.objects.filter(third_party=self)
-    def _creditordebit(self): return self.account.creditordebit
+    def _positive_credit(self): return self.account.positive_credit
 
     def __unicode__(self):
         return '<ThirdParty %s %s>' % (self.name, self.id)
