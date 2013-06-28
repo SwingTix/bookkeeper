@@ -1,12 +1,10 @@
-from django.db import models
-from django.db.models import Sum
-
-from decimal import Decimal
 import datetime
+from django.db import models
+from swingtix.bookkeeper.account_api import AccountBase
 
-from collections import namedtuple
-
-AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo credit debit opening closing')
+class _AccountApi(AccountBase):
+    def _new_transaction(self):
+        return Transaction()
 
 class BookSet(models.Model):
     """A set of accounts for an organization.  On desktop accounting software, one BookSet row would typically represent one saved file.
@@ -22,118 +20,7 @@ class BookSet(models.Model):
     def __unicode__(self):
         return self.description
 
-class _AccountBase(object):
-    """ Implements a high-level account interface.
-
-    Children must implement:
-        def _make_ae(self, amount, memo, tx):
-            "Create an AccountEntry with the given data."
-
-        def _entries(self):
-            "Return a queryset of the relevant AccountEntries."
-
-        delf _positive_credit(self):
-    """
-
-    #If, by historical accident, debits are negative and credits are positive in the database, set this to -1.  By default
-    #otherwise leave it as 1 as standard partice is to have debits positive.
-    #(this variable is multipled against data before storage and after retrieval.)
-    _DEBIT_IN_DB = 1
-
-    def debit(self, amount, credit_account, description, debit_memo="", credit_memo="", project=None,datetime=None):
-        """ Post a debit of 'amount' and a credit of -amount against this account and credit_account respectively.
-
-        note amount must be non-negative.
-        """
-
-        assert amount >= 0
-        return self.post(amount, credit_account, description, self_memo=debit_memo, other_memo=credit_memo, project=project, datetime=datetime)
-    def credit(self, amount, debit_account, description, debit_memo="", credit_memo="", project=None, datetime=None):
-        """ Post a credit of 'amount' and a debit of -amount against this account and credit_account respectively.
-
-        note amount must be non-negative.
-        """
-        assert amount >= 0
-        return self.post(-amount, debit_account, description, self_memo=credit_memo, other_memo=debit_memo, project=project, datetime=datetime)
-
-    def post(self, amount, other_account, description, self_memo="", other_memo="", project=None, datetime=None):
-        """ Post a transaction of 'amount' against this account and the negative amount against 'other_account'.
-
-        This will show as a debit or credit against this account when amount > 0 or amount < 0 respectively.
-        """
-
-        #Note: debits are always positive, credits are always negative.  They should be negated before displaying
-        #(expense and liability?) accounts
-        tx = Transaction()
-        if project:
-            tx.project = project
-        else:
-            tx.project = 0
-
-        if datetime:
-            tx.t_stamp = datetime
-        #else now()
-
-        tx.description = description
-        tx.save()
-
-        a1 = self._make_ae(_AccountBase._DEBIT_IN_DB*amount, self_memo, tx)
-        a1.save()
-        a2 = other_account._make_ae(-_AccountBase._DEBIT_IN_DB*amount, other_memo, tx)
-        a2.save()
-
-        return (a1,a2)
-
-    def balance(self, date=None):
-        """ returns the account balance as of 'date' (datetime stamp) or now().  """
-
-        qs = self._entries()
-        if date:
-            qs = qs.filter(transaction__t_stamp__lt=date)
-        r = qs.aggregate(b=Sum('amount'))
-        b = r['b']
-
-        flip = _AccountBase._DEBIT_IN_DB 
-        if self._positive_credit():
-            flip *= -1
-
-        if b == None:
-            b = Decimal("0.00")
-        b *= flip
-
-        #print "returning balance %s for %s" % (b, self)
-        return b
-
-    def ledger(self, start=None, end=None):
-        flip = _AccountBase._DEBIT_IN_DB 
-        if self._positive_credit():
-            flip *= -1
-
-        qs = self._entries()
-        balance = Decimal("0.00")
-        if start:
-            balance = self.balance(start)
-            qs = qs.filter(transaction__t_stamp__gte=start)
-        if end:
-            qs = qs.filter(transaction__t_stamp__lt=end)
-
-        for e in qs.order_by("transaction__t_stamp", "transaction__tid").all():
-            if e.amount < 0:
-                debit = None
-                credit = -e.amount
-            else:
-                debit = e.amount
-                credit = None
-
-            o_balance = balance
-            balance += flip*e.amount
-                
-            yield AccountEntryTuple(e.transaction.t_stamp, e.transaction.description, e.description,
-                debit, credit, o_balance, balance)
-
-
-
-class Account(models.Model, _AccountBase):
+class Account(models.Model, _AccountApi):
     """ A financial account in a double-entry bookkeeping bookset.
 
     for example:
@@ -151,7 +38,7 @@ class Account(models.Model, _AccountBase):
     #parent account?
     #annotations for registration: receivables, revenue.. etc
 
-    #needed by _AccountBase
+    #needed by _AccountApi
     def _make_ae(self, amount, memo, tx):
         ae = AccountEntry()
         ae.account = self
@@ -165,7 +52,7 @@ class Account(models.Model, _AccountBase):
     def __unicode__(self):
         return '%s %s' % (self.organization.name, self.name)
 
-class ThirdParty(models.Model, _AccountBase):
+class ThirdParty(models.Model, _AccountApi):
     """Represents an account with another party.  (eg. Account Receivable, or Account Payable.) """
     id = models.AutoField(primary_key=True)
 
@@ -173,7 +60,7 @@ class ThirdParty(models.Model, _AccountBase):
 
     account = models.ForeignKey(Account, related_name="third_parties")
 
-    #needed by _AccountBase
+    #needed by _AccountApi
     def _make_ae(self, amount, memo, tx):
         """ Makes an AccountEntry for this account with the given amount, memo and tx set.  Does not save it. """
 
@@ -243,5 +130,4 @@ class AccountEntry(models.Model):
         base =  "%d %s" % (self.amount, self.description)
 
         return base
-
 

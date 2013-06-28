@@ -7,7 +7,8 @@ Replace this with more appropriate tests for your application.
 
 from django.test import TestCase
 
-from swingtix.bookkeeper.models import BookSet, Account, AccountEntryTuple, ThirdParty
+from swingtix.bookkeeper.models import BookSet, Account, ThirdParty
+from swingtix.bookkeeper.account_api import AccountEntryTuple
 
 from decimal import Decimal
 from datetime import datetime
