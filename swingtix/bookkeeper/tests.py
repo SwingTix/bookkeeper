@@ -55,6 +55,21 @@ class SimpleTest(TestCase):
         self.ar.save()
 
 
+    def assertEqualLedgers(self, actual, expected):
+        self.assertEqual(len(actual), len(expected))
+        if len(actual) != len(expected): return
+
+        for i in range(len(actual)):
+            a = actual[i]
+            b = expected[i]
+            self.assertEqual(a.time, b.time)
+            self.assertEqual(a.description, b.description)
+            self.assertEqual(a.memo, b.memo)
+            self.assertEqual(a.credit, b.credit)
+            self.assertEqual(a.debit, b.debit)
+            self.assertEqual(a.opening, b.opening)
+            self.assertEqual(a.closing, b.closing)
+
     def test_basic_entries(self):
         self.assertEqual(self.bank.balance(), Decimal("0.00"))
         self.assertEqual(self.expense.balance(), Decimal("0.00"))
@@ -91,57 +106,57 @@ class SimpleTest(TestCase):
         self.assertEqual(self.revenue.balance(d3), Decimal("12.00"))
         self.assertEqual(self.revenue.balance(d4), Decimal("12.00"))
 
-        self.assertEqual(list(self.bank.ledger()), [
-            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35")),
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
+        self.assertEqualLedgers(list(self.bank.ledger()), [
+            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
+            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
             ])
 
-        self.assertEqual(list(self.expense.ledger()), [
-            AccountEntryTuple(d1, u"jawbreaker", u"", Decimal("0.35"), None, Decimal("0.00"), Decimal("0.35")),
-            AccountEntryTuple(d3, u"soft drink for myself", u"", Decimal("1.75"), None, Decimal("0.35"), Decimal("2.10")),
+        self.assertEqualLedgers(list(self.expense.ledger()), [
+            AccountEntryTuple(d1, u"jawbreaker", u"", Decimal("0.35"), None, Decimal("0.00"), Decimal("0.35"), None),
+            AccountEntryTuple(d3, u"soft drink for myself", u"", Decimal("1.75"), None, Decimal("0.35"), Decimal("2.10"), None),
             ])
-        self.assertEqual(list(self.revenue.ledger()), [
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", None, Decimal("12.00"), Decimal("0.00"), Decimal("12.00")),
-            ])
-
-        self.assertEqual(list(self.bank.ledger(start=d2)), [
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
+        self.assertEqualLedgers(list(self.revenue.ledger()), [
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", None, Decimal("12.00"), Decimal("0.00"), Decimal("12.00"), None),
             ])
 
-        self.assertEqual(list(self.bank.ledger(start=d3)), [
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
+        self.assertEqualLedgers(list(self.bank.ledger(start=d2)), [
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
+            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
             ])
 
-        self.assertEqual(list(self.bank.ledger(end=d4)), [
-            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35")),
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
+        self.assertEqualLedgers(list(self.bank.ledger(start=d3)), [
+            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
             ])
 
-        self.assertEqual(list(self.bank.ledger(end=d3)), [
-            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35")),
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
+        self.assertEqualLedgers(list(self.bank.ledger(end=d4)), [
+            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
+            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
             ])
 
-        self.assertEqual(list(self.bank.ledger(end=d2)), [
-            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35")),
+        self.assertEqualLedgers(list(self.bank.ledger(end=d3)), [
+            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
             ])
 
-        self.assertEqual(list(self.bank.ledger(end=d1)), [
+        self.assertEqualLedgers(list(self.bank.ledger(end=d2)), [
+            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
             ])
 
-        self.assertEqual(list(self.bank.ledger(start=d2,end=d3)), [
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
+        self.assertEqualLedgers(list(self.bank.ledger(end=d1)), [
             ])
 
-        self.assertEqual(list(self.bank.ledger(start=d3,end=d4)), [
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
+        self.assertEqualLedgers(list(self.bank.ledger(start=d2,end=d3)), [
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
             ])
-        self.assertEqual(list(self.bank.ledger(start=d2,end=d4)), [
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65")),
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90")),
+
+        self.assertEqualLedgers(list(self.bank.ledger(start=d3,end=d4)), [
+            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
+            ])
+        self.assertEqualLedgers(list(self.bank.ledger(start=d2,end=d4)), [
+            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
+            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
             ])
 
     def test_AR(self):

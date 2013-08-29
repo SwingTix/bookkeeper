@@ -1,8 +1,9 @@
 from collections import namedtuple
 from decimal import Decimal
 from django.db.models import Sum
+from django.db import transaction
 
-AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo credit debit opening closing')
+AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo credit debit opening closing txid')
 
 class AccountBase(object):
     """ Implements a high-level account interface.
@@ -16,6 +17,9 @@ class AccountBase(object):
 
         def _positive_credit(self):
             "Does this account consider credit positive?  (Return False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.) "
+
+        def _DEBIT_IN_DB(self):
+            return 1
     """
 
     #If, by historical accident, debits are negative and credits are positive in the database, set this to -1.  By default
@@ -43,6 +47,7 @@ class AccountBase(object):
     def _new_transaction():
         assert False, "not implemented"
 
+    @transaction.commit_on_success
     def post(self, amount, other_account, description, self_memo="", other_memo="", project=None, datetime=None):
         """ Post a transaction of 'amount' against this account and the negative amount against 'other_account'.
 
@@ -103,19 +108,29 @@ class AccountBase(object):
             qs = qs.filter(transaction__t_stamp__gte=start)
         if end:
             qs = qs.filter(transaction__t_stamp__lt=end)
+        qs = qs.order_by("transaction__t_stamp", "transaction__tid")
 
-        for e in qs.order_by("transaction__t_stamp", "transaction__tid").all():
-            if e.amount < 0:
-                debit = None
-                credit = -e.amount
-            else:
-                debit = e.amount
-                credit = None
+        if not qs:
+            return []
 
-            o_balance = balance
-            balance += flip*e.amount
-                
-            yield AccountEntryTuple(e.transaction.t_stamp, e.transaction.description, e.description,
-                debit, credit, o_balance, balance)
+        #helper is a hack so the caller can test for no entries.
+        def helper(balance_in):
+            balance = balance_in
+            for e in qs.all():
+                if e.amount < 0:
+                    debit = None
+                    credit = -e.amount
+                else:
+                    debit = e.amount
+                    credit = None
 
+                o_balance = balance
+                balance += flip*e.amount
+
+                d = e.transaction.t_stamp.date()
+                txid = "{:04d}{:02d}{:02d}{:08d}".format(d.year, d.month, d.day, e.aeid)
+                    
+                yield AccountEntryTuple(e.transaction.t_stamp, e.transaction.description, e.description,
+                    debit, credit, o_balance, balance, txid)
+        return helper(balance)
 
