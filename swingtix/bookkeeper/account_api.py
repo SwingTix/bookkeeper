@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db.models import Sum
 from django.db import transaction
 
-AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo credit debit opening closing txid')
+AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo debit credit opening closing txid')
 
 class AccountBase(object):
     """ Implements a high-level account interface.
@@ -97,7 +97,9 @@ class AccountBase(object):
         return b
 
     def ledger(self, start=None, end=None):
-        flip = self._DEBIT_IN_DB()
+        DEBIT_IN_DB = self._DEBIT_IN_DB()
+
+        flip = 1
         if self._positive_credit():
             flip *= -1
 
@@ -117,20 +119,29 @@ class AccountBase(object):
         def helper(balance_in):
             balance = balance_in
             for e in qs.all():
-                if e.amount < 0:
+                amount = e.amount*DEBIT_IN_DB
+                if amount < 0:
                     debit = None
-                    credit = -e.amount
+                    credit = -amount
                 else:
-                    debit = e.amount
+                    debit = amount
                     credit = None
 
                 o_balance = balance
-                balance += flip*e.amount
+                balance += flip*amount
 
                 d = e.transaction.t_stamp.date()
                 txid = "{:04d}{:02d}{:02d}{:08d}".format(d.year, d.month, d.day, e.aeid)
                     
-                yield AccountEntryTuple(e.transaction.t_stamp, e.transaction.description, e.description,
-                    debit, credit, o_balance, balance, txid)
+                yield AccountEntryTuple(
+                    time=e.transaction.t_stamp,
+                    description=e.transaction.description,
+                    memo=e.description,
+                    debit=debit,
+                    credit=credit,
+                    opening=o_balance,
+                    closing=balance,
+                    txid=txid
+                    )
         return helper(balance)
 

@@ -107,9 +107,15 @@ class SimpleTest(TestCase):
         self.assertEqual(self.revenue.balance(d4), Decimal("12.00"))
 
         self.assertEqualLedgers(list(self.bank.ledger()), [
-            AccountEntryTuple(d1, u"jawbreaker", u"", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
-            AccountEntryTuple(d2, u"Membership purchased in cash", u"", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
-            AccountEntryTuple(d3, u"soft drink for myself", u"", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
+            AccountEntryTuple(time=d1, description=u"jawbreaker", memo=u"", txid=None,
+                debit=None, credit=Decimal("0.35"),
+                opening=Decimal("0.00"), closing=Decimal("-0.35")),
+            AccountEntryTuple(time=d2, description=u"Membership purchased in cash", memo=u"", txid=None,
+                debit=Decimal("12.00"), credit=None,
+                opening=Decimal("-0.35"), closing=Decimal("11.65")),
+            AccountEntryTuple(time=d3, description=u"soft drink for myself", memo=u"", txid=None,
+                debit=None, credit=Decimal("1.75"),
+                opening=Decimal("11.65"), closing=Decimal( "9.90")),
             ])
 
         self.assertEqualLedgers(list(self.expense.ledger()), [
