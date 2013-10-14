@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from collections import namedtuple
 from decimal import Decimal
 from django.db.models import Sum
@@ -8,19 +9,26 @@ AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo debit
 class AccountBase(object):
     """ Implements a high-level account interface.
 
-    Children must implement:
-        def _make_ae(self, amount, memo, tx):
-            "Create an AccountEntry with the given data."
-
-        def _entries(self):
-            "Return a queryset of the relevant AccountEntries."
-
-        def _positive_credit(self):
-            "Does this account consider credit positive?  (Return False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.) "
-
-        def _DEBIT_IN_DB(self):
-            return 1
+    Children must implement: _make_ae, _new_transaction, _entries,
+    _positive_credit.  They may also wish to override _DEBIT_IN_DB.
     """
+
+    def _make_ae(self, amount, memo, tx):
+        "Create an AccountEntry with the given data."
+        raise NotImplementedError()
+
+    def _new_transaction(self):
+        "Create a new transaction"
+        raise NotImplementedError()
+
+    def _entries(self):
+        "Return a queryset of the relevant AccountEntries."
+        raise NotImplementedError()
+
+    def _positive_credit(self):
+        "Does this account consider credit positive?  (Return False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.) "
+        raise NotImplementedError()
+
 
     #If, by historical accident, debits are negative and credits are positive in the database, set this to -1.  By default
     #otherwise leave it as 1 as standard partice is to have debits positive.
@@ -28,27 +36,24 @@ class AccountBase(object):
     def _DEBIT_IN_DB(self):
         return 1
 
-    def debit(self, amount, credit_account, description, debit_memo="", credit_memo="", project=None,datetime=None):
+    def debit(self, amount, credit_account, description, debit_memo="", credit_memo="", datetime=None):
         """ Post a debit of 'amount' and a credit of -amount against this account and credit_account respectively.
 
         note amount must be non-negative.
         """
 
         assert amount >= 0
-        return self.post(amount, credit_account, description, self_memo=debit_memo, other_memo=credit_memo, project=project, datetime=datetime)
-    def credit(self, amount, debit_account, description, debit_memo="", credit_memo="", project=None, datetime=None):
+        return self.post(amount, credit_account, description, self_memo=debit_memo, other_memo=credit_memo, datetime=datetime)
+    def credit(self, amount, debit_account, description, debit_memo="", credit_memo="", datetime=None):
         """ Post a credit of 'amount' and a debit of -amount against this account and credit_account respectively.
 
         note amount must be non-negative.
         """
         assert amount >= 0
-        return self.post(-amount, debit_account, description, self_memo=credit_memo, other_memo=debit_memo, project=project, datetime=datetime)
-
-    def _new_transaction():
-        assert False, "not implemented"
+        return self.post(-amount, debit_account, description, self_memo=credit_memo, other_memo=debit_memo, datetime=datetime)
 
     @transaction.commit_on_success
-    def post(self, amount, other_account, description, self_memo="", other_memo="", project=None, datetime=None):
+    def post(self, amount, other_account, description, self_memo="", other_memo="", datetime=None):
         """ Post a transaction of 'amount' against this account and the negative amount against 'other_account'.
 
         This will show as a debit or credit against this account when amount > 0 or amount < 0 respectively.
@@ -57,10 +62,6 @@ class AccountBase(object):
         #Note: debits are always positive, credits are always negative.  They should be negated before displaying
         #(expense and liability?) accounts
         tx = self._new_transaction()
-        if project:
-            tx.project = project
-        else:
-            tx.project = 0
 
         if datetime:
             tx.t_stamp = datetime
@@ -97,6 +98,19 @@ class AccountBase(object):
         return b
 
     def ledger(self, start=None, end=None):
+        """Returns a list of entries for this account.
+
+        Ledger returns a sequence of AccountEntryTuple's matching the criteria
+        in chronological order. The returned sequence can be boolean-tested
+        (ie. test that nothing was returned).
+
+        If 'start' is given, only entries on or after that datetime are
+        returned.  'start' must be given with a timezone.
+
+        If 'end' is given, only entries before that datetime are
+        returned.  'end' must be given with a timezone.
+        """
+
         DEBIT_IN_DB = self._DEBIT_IN_DB()
 
         flip = 1
@@ -144,4 +158,88 @@ class AccountBase(object):
                     txid=txid
                     )
         return helper(balance)
+
+class ThirdPartySubAccount(AccountBase):
+    """ A proxy account that behaves like a third party account. It passes most
+    of its responsibilities to a parent account.
+    """
+
+    def __init__(self, parent, third_party):
+        self._third_party = third_party
+        self._parent = parent
+
+    def _make_ae(self, amount, memo, tx):
+        ae = self._parent._make_ae(amount, memo, tx)
+        if self._third_party:
+            ae.third_party = self._third_party
+        return ae
+
+    def _new_transaction(self):
+        tx = self._parent._new_transaction()
+        return tx
+
+    def _entries(self):
+        qs = self._parent._entries()
+        if self._third_party:
+            qs = qs.filter(third_party=self._third_party)
+
+        return qs
+
+    def _positive_credit(self):
+        return self._parent._positive_credit()
+
+    def _DEBIT_IN_DB(self): 
+        return self._parent._DEBIT_IN_DB()
+
+
+class ProjectAccount(ThirdPartySubAccount):
+    """ A proxy account that behaves like its parent account except isolates transactions for
+    to a project.  It passes most of its responsibilities to a parent account.
+    """
+
+    def __init__(self, parent, project, third_party=None):
+        super(ProjectAccount, self).__init__(parent, third_party)
+        self._project = project
+
+
+    def _new_transaction(self):
+        tx = super(ProjectAccount, self)._new_transaction()
+        tx.project = self._project
+        return tx
+
+    def _entries(self):
+        qs = super(ProjectAccount, self)._entries()
+        qs = qs.filter(transaction__project=self._project)
+
+        return qs
+
+class BookSetBase(object):
+    """ Base account for BookSet-like-things, such as BookSets and Projects. """
+
+    def accounts(self):
+        """Returns a sequence of account objects belonging to this bookset."""
+        raise NotImplementedError()
+        #return self.accounts.get(name=name)
+
+    def get_third_party(self, third_party):
+        """Return the account for the given third-party.  Raise <something> if the third party doesn't belong to this bookset."""
+        actual_account = third_party.account
+        assert actual_account.bookset == self
+        return ThirdPartySubAccount(actual_account, third_party=third_party)
+
+class ProjectBase(BookSetBase):
+    """ Base account for Projects.
+
+        Required: self.bookset -- the parent (main) bookset
+    """
+
+    def get_account(self, name):
+        actual_account = self.bookset.get_account(name)
+        return ProjectAccount(actual_account, project=self)
+
+    def get_third_party(self, third_party):
+        """Return the account for the given third-party.  Raise <something> if the third party doesn't belong to this bookset."""
+        actual_account = third_party.account
+        assert actual_account.bookset == self.bookset
+        return ProjectAccount(actual_account, project=self, third_party=third_party)
 
