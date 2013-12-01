@@ -4,7 +4,86 @@ from decimal import Decimal
 from django.db.models import Sum
 from django.db import transaction
 
-AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo debit credit opening closing txid')
+class LedgerEntry(object):
+    """ A read-only AccountEntry representation.
+
+    (replaces namedtuple('AccountEntryTuple', 'time description memo debit credit opening closing txid') )
+     """
+
+    def __init__(self, normalized_amount, ae, opening, closing):
+        self._e = ae
+        self._opening = opening
+        self._closing = closing
+        self._amount = normalized_amount
+
+    def __str__(self):
+        if self._amount > 0:
+            return u"<ledger entry {0}Dr {1} {2}>".format(self.debit, self.time, self.description)
+        else:
+            return u"<ledger entry {0}Cr {1} {2}>".format(self.credit, self.time, self.description)
+
+    @property
+    def time(self):
+        return self._e.transaction.t_stamp
+
+    @property
+    def description(self):
+        return self._e.transaction.description
+
+    @property
+    def memo(self):
+        return self._e.description
+
+    @property
+    def debit(self):
+        if self._amount >= 0:
+            return self._amount
+        else:
+            return None
+
+    @property
+    def credit(self): 
+        if self._amount < 0:
+            return -self._amount
+        else:
+            return None
+
+    @property
+    def opening(self):
+        return self._opening
+
+    @property
+    def closing(self):
+        return self._closing
+
+    @property
+    def txid(self):
+        d = self._e.transaction.t_stamp.date()
+        return "{:04d}{:02d}{:02d}{:08d}".format(d.year, d.month, d.day, self._e.aeid)
+
+    def other_entry(self):
+        l = self.other_entries()
+        assert len(l) == 1
+        return l[0]
+
+    def other_entries(self):
+        """ Returns a list of tuples of the other entries for this transaction.
+
+        Most transactions have only two pieces: a debit and a credit, so this function will
+        return the "other half" in those cases with a single tuple in the list.  However, it's
+        possible to have more, so long as the debits and credit sum to be equal.
+
+        Each tuple has two values: the amount and the account.
+        """
+
+        l = []
+        t = self._e.transaction
+        for ae in t.entries.all():
+            if ae != self._e:
+                amount = ae.amount * ae.account._DEBIT_IN_DB()
+                l.append( (amount, ae.account) )
+
+        return l
 
 class AccountBase(object):
     """ Implements a high-level account interface.
@@ -13,19 +92,19 @@ class AccountBase(object):
     _positive_credit.  They may also wish to override _DEBIT_IN_DB.
     """
 
-    def _make_ae(self, amount, memo, tx):
+    def _make_ae(self, amount, memo, tx): # pragma: no coverage
         "Create an AccountEntry with the given data."
         raise NotImplementedError()
 
-    def _new_transaction(self):
+    def _new_transaction(self): # pragma: no coverage
         "Create a new transaction"
         raise NotImplementedError()
 
-    def _entries(self):
+    def _entries(self): # pragma: no coverage
         "Return a queryset of the relevant AccountEntries."
         raise NotImplementedError()
 
-    def _positive_credit(self):
+    def _positive_credit(self): # pragma: no coverage
         "Does this account consider credit positive?  (Return False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.) "
         raise NotImplementedError()
 
@@ -100,7 +179,7 @@ class AccountBase(object):
     def ledger(self, start=None, end=None):
         """Returns a list of entries for this account.
 
-        Ledger returns a sequence of AccountEntryTuple's matching the criteria
+        Ledger returns a sequence of LedgerEntry's matching the criteria
         in chronological order. The returned sequence can be boolean-tested
         (ie. test that nothing was returned).
 
@@ -134,29 +213,11 @@ class AccountBase(object):
             balance = balance_in
             for e in qs.all():
                 amount = e.amount*DEBIT_IN_DB
-                if amount < 0:
-                    debit = None
-                    credit = -amount
-                else:
-                    debit = amount
-                    credit = None
-
                 o_balance = balance
                 balance += flip*amount
 
-                d = e.transaction.t_stamp.date()
-                txid = "{:04d}{:02d}{:02d}{:08d}".format(d.year, d.month, d.day, e.aeid)
-                    
-                yield AccountEntryTuple(
-                    time=e.transaction.t_stamp,
-                    description=e.transaction.description,
-                    memo=e.description,
-                    debit=debit,
-                    credit=credit,
-                    opening=o_balance,
-                    closing=balance,
-                    txid=txid
-                    )
+                yield LedgerEntry(amount, e, o_balance, balance)
+
         return helper(balance)
 
 class ThirdPartySubAccount(AccountBase):
@@ -168,10 +229,13 @@ class ThirdPartySubAccount(AccountBase):
         self._third_party = third_party
         self._parent = parent
 
+    def get_bookset(self):
+        return self._parent.get_bookset()
+
     def _make_ae(self, amount, memo, tx):
         ae = self._parent._make_ae(amount, memo, tx)
         if self._third_party:
-            ae.third_party = self._third_party
+            self._third_party._associate_entry(ae)
         return ae
 
     def _new_transaction(self):
@@ -181,7 +245,7 @@ class ThirdPartySubAccount(AccountBase):
     def _entries(self):
         qs = self._parent._entries()
         if self._third_party:
-            qs = qs.filter(third_party=self._third_party)
+            qs = self._third_party._filter_third_party(qs)
 
         return qs
 
@@ -191,6 +255,8 @@ class ThirdPartySubAccount(AccountBase):
     def _DEBIT_IN_DB(self): 
         return self._parent._DEBIT_IN_DB()
 
+    def __str__(self):
+        return """<ThirdPartySubAccount for tp {0}>""".format(self._third_party)
 
 class ProjectAccount(ThirdPartySubAccount):
     """ A proxy account that behaves like its parent account except isolates transactions for
@@ -201,45 +267,55 @@ class ProjectAccount(ThirdPartySubAccount):
         super(ProjectAccount, self).__init__(parent, third_party)
         self._project = project
 
+    def get_bookset(self):
+        if self._project:
+            return self._project.get_bookset()
+        else:
+            return self._parent.get_bookset()
 
     def _new_transaction(self):
         tx = super(ProjectAccount, self)._new_transaction()
-        tx.project = self._project
+        if self._project:
+            self._project._associate_transaction(tx)
         return tx
 
     def _entries(self):
         qs = super(ProjectAccount, self)._entries()
-        qs = qs.filter(transaction__project=self._project)
+        if self._project:
+            qs=self._project._filter_project_qs(qs)
 
         return qs
+
+    def __str__(self):
+        return """<ProjectAccount for bookset {0} tp {1}>""".format(self.get_bookset(), self._third_party)
 
 class BookSetBase(object):
     """ Base account for BookSet-like-things, such as BookSets and Projects. """
 
-    def accounts(self):
+    def accounts(self): # pragma: no coverage
         """Returns a sequence of account objects belonging to this bookset."""
         raise NotImplementedError()
-        #return self.accounts.get(name=name)
 
     def get_third_party(self, third_party):
         """Return the account for the given third-party.  Raise <something> if the third party doesn't belong to this bookset."""
-        actual_account = third_party.account
-        assert actual_account.bookset == self
+        actual_account = third_party.get_account()
+        assert actual_account.get_bookset() == self
         return ThirdPartySubAccount(actual_account, third_party=third_party)
 
 class ProjectBase(BookSetBase):
     """ Base account for Projects.
 
-        Required: self.bookset -- the parent (main) bookset
+        Required: self.get_bookset() -- the parent (main) bookset
     """
 
     def get_account(self, name):
-        actual_account = self.bookset.get_account(name)
+        actual_account = self.get_bookset().get_account(name)
         return ProjectAccount(actual_account, project=self)
 
     def get_third_party(self, third_party):
         """Return the account for the given third-party.  Raise <something> if the third party doesn't belong to this bookset."""
-        actual_account = third_party.account
-        assert actual_account.bookset == self.bookset
+        actual_account = third_party.get_account()
+
+        assert actual_account.get_bookset() == self.get_bookset()
         return ProjectAccount(actual_account, project=self, third_party=third_party)
 

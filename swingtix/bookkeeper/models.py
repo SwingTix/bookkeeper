@@ -37,8 +37,7 @@ class Project(models.Model, ProjectBase):
 
     This is useful for tracking different activites, projects, major products,
     or sub-divisions of an organization.  A project should behave like a
-    "BookSet", except that its transactions will show up both in this Project
-    and its BookSet.
+    "BookSet", except that its transactions will show up both in this Project and its BookSet.
 
     It's not necessary to use Projects: transactions can be entered in the
     BookSet directly without putting them in a project.
@@ -51,8 +50,18 @@ class Project(models.Model, ProjectBase):
     bookset = models.ForeignKey(BookSet, related_name="projects",
         help_text="""The bookset for this project.""")
 
+
     def accounts(self):
         return self.bookset.accounts()
+
+    def get_bookset(self):
+        return self.bookset
+
+    def _associate_transaction(self, tx):
+        tx.project = self
+
+    def _filter_project_qs(self, qs):
+        return qs.filter(transaction__project=self)
 
     def __unicode__(self):
         return '<Project {0}>'.format(self.name)
@@ -80,6 +89,9 @@ class Account(models.Model, _AccountApi):
     accid = models.AutoField(primary_key=True)
     bookset = models.ForeignKey(BookSet, db_column='org', related_name='account_objects')
 
+    def get_bookset(self):
+        return self.bookset
+
     positive_credit = models.BooleanField(
         """credit entries increase the value of this account.  Set to False for
         Asset & Expense accounts, True for Liability, Revenue and Equity accounts.""")
@@ -99,10 +111,13 @@ class Account(models.Model, _AccountApi):
     def _positive_credit(self): return self.positive_credit
 
     def __unicode__(self):
-        return '%s %s' % (self.organization.name, self.name)
+        return '{0} {1}'.format(self.bookset.description, self.name)
 
 class ThirdParty(models.Model):
     """Represents a third party (eg. Account Receivable or Account Payable).
+
+    (Question: using only the ORM, how do I get a third party's balance?
+    account.entries.filter(third_party=self).sum()? )
     
     Each third party is associated with a bookkeeping account (traditionally
     either the AR or AP account).  A third party's account can be accessed by
@@ -133,6 +148,17 @@ class ThirdParty(models.Model):
 
     account = models.ForeignKey(Account, related_name="third_parties", 
         help_text= """The parent account: typically an 'AR' or 'AP' account.""")
+
+    def get_account(self):
+        return self.account
+
+    def _associate_entry(self, entry):
+        """ Transitional function: abstracts the database's representation of third parties."""
+        entry.third_party = self
+
+    def _filter_third_party(self, qs):
+        """ Transitional function: abstracts the database's representation of third parties."""
+        return qs.filter(third_party=self)
 
     def __unicode__(self):
         return '<ThirdParty {0} {1}>'.format(self.name, self.id)

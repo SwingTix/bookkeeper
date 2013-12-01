@@ -10,11 +10,13 @@ from __future__ import unicode_literals
 from django.test import TestCase
 
 from .models import BookSet, Account, ThirdParty, Project
-from .account_api import AccountEntryTuple
+from .account_api import LedgerEntry
 
 from decimal import Decimal
 from datetime import datetime
 
+from collections import namedtuple
+AccountEntryTuple = namedtuple('AccountEntryTuple', 'time description memo debit credit opening closing txid')
 
 class SimpleTest(TestCase):
     def setUp(self):
@@ -54,6 +56,7 @@ class SimpleTest(TestCase):
         self.assertEqual(len(actual), len(expected))
         if len(actual) != len(expected): return
 
+        txid_set = set()
         for i in range(len(actual)):
             a = actual[i]
             b = expected[i]
@@ -64,6 +67,11 @@ class SimpleTest(TestCase):
             self.assertEqual(a.debit, b.debit)
             self.assertEqual(a.opening, b.opening)
             self.assertEqual(a.closing, b.closing)
+
+            self.assertEqual(a.txid in txid_set, False)
+            txid_set.add(a.txid)
+
+            self.assertEqual(str(a) != None, True)
             #ignore txid since the implementation is allowed to change.
 
             #TODO: make test for txid uniqueness?
@@ -301,6 +309,7 @@ class SimpleTest(TestCase):
         party1.save()
 
         ar1 = book.get_third_party(party1)
+        self.assertEqual(str(ar1) != None, True)
 
     def test_project_book_basic(self):
         master_book = BookSet.objects.create(
@@ -379,6 +388,9 @@ class SimpleTest(TestCase):
             )
         project_b.save()
 
+        self.assertEqual(str(project_a) != None, True)
+        self.assertEqual(str(project_b) != None, True)
+
         bank  = self.book.get_account("bank")
         bankA = project_a.get_account("bank")
         bankB = project_b.get_account("bank")
@@ -425,6 +437,10 @@ class SimpleTest(TestCase):
         party1.save()
         arA_party1 = project_a.get_third_party(party1)
         arB_party1 = project_b.get_third_party(party1)
+
+        self.assertEqual(str(party1)     != None, True)
+        self.assertEqual(str(arA_party1) != None, True)
+        self.assertEqual(str(arB_party1) != None, True)
 
         party2 = ThirdParty(
             account = ar,
