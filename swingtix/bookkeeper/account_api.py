@@ -1,3 +1,20 @@
+"""
+
+Provides logic for the backend model's functionality.
+
+Models..
+
+  * AccountBase -- see docstrings
+  * BookSetBase
+  * ProjectBase
+
+ThirdParty must implement:
+
+    get_account(self):
+        " Return the parent 'account' (typically an AR or AP account, possibly tied to a project) that the third party is part of.  "
+
+"""
+
 from __future__ import unicode_literals
 from collections import namedtuple
 from decimal import Decimal
@@ -62,9 +79,10 @@ class LedgerEntry(object):
         return "{:04d}{:02d}{:02d}{:08d}".format(d.year, d.month, d.day, self._e.aeid)
 
     def other_entry(self):
+        """ Returns the account of the other leg of this transaction.  Asserts if there's more than two legs. """
         l = self.other_entries()
         assert len(l) == 1
-        return l[0]
+        return l[0][1]
 
     def other_entries(self):
         """ Returns a list of tuples of the other entries for this transaction.
@@ -108,6 +126,8 @@ class AccountBase(object):
         "Does this account consider credit positive?  (Return False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.) "
         raise NotImplementedError()
 
+    def get_bookset(self): # pragma: no coverage
+        raise NotImplementedError()
 
     #If, by historical accident, debits are negative and credits are positive in the database, set this to -1.  By default
     #otherwise leave it as 1 as standard partice is to have debits positive.
@@ -268,10 +288,7 @@ class ProjectAccount(ThirdPartySubAccount):
         self._project = project
 
     def get_bookset(self):
-        if self._project:
-            return self._project.get_bookset()
-        else:
-            return self._parent.get_bookset()
+        return self._project.get_bookset()
 
     def _new_transaction(self):
         tx = super(ProjectAccount, self)._new_transaction()
@@ -290,7 +307,10 @@ class ProjectAccount(ThirdPartySubAccount):
         return """<ProjectAccount for bookset {0} tp {1}>""".format(self.get_bookset(), self._third_party)
 
 class BookSetBase(object):
-    """ Base account for BookSet-like-things, such as BookSets and Projects. """
+    """ Base account for BookSet-like-things, such as BookSets and Projects.
+
+    children must implement accounts()
+    """
 
     def accounts(self): # pragma: no coverage
         """Returns a sequence of account objects belonging to this bookset."""
@@ -305,8 +325,13 @@ class BookSetBase(object):
 class ProjectBase(BookSetBase):
     """ Base account for Projects.
 
-        Required: self.get_bookset() -- the parent (main) bookset
+    Children must implement: get_bookset() and accounts()
     """
+
+    def get_bookset(self): # pragma: no coverage
+        """Returns the the parent (main) bookset """
+        raise NotImplementedError()
+
 
     def get_account(self, name):
         actual_account = self.get_bookset().get_account(name)

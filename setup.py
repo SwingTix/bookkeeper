@@ -4,7 +4,7 @@ from setuptools import find_packages
 
 setup(
     name='swingtix/bookkeeper',
-    version='0.0.0',
+    version='0.0.1',
     author=u'Geoff Oakham',
     author_email=u'geoff.oakham@swingtix.ca',
     packages=find_packages(),
@@ -15,7 +15,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     tests_require=[
-        'django>=1.3,<1.4',
+        'django>=1.5,<1.7',
     ],
    classifiers=[
         'Development Status :: 3 - Alpha'
