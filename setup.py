@@ -3,7 +3,7 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(
-    name='swingtix/bookkeeper',
+    name='swingtix-bookkeeper',
     version='0.0.1',
     author=u'Geoff Oakham',
     author_email=u'geoff.oakham@swingtix.ca',
@@ -18,9 +18,8 @@ setup(
         'django>=1.5,<1.7',
     ],
    classifiers=[
-        'Development Status :: 3 - Alpha'
+        'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
-        'Framework :: Django',
         'Intended Audience :: Developers',
         'Intended Audience :: Financial and Insurance Industry',
         'Framework :: Django',
