@@ -6,12 +6,17 @@ A `double-entry bookkeeping <http://en.wikipedia.org/wiki/Double-entry_bookkeepi
 Hello, World
 ------------
 
-You'll need a django project:: 
+You'll need a django project.  If you don't have one handy, you can make an empty one following
+the first steps of the `django tutorial <https://docs.djangoproject.com/en/1.6/>`_.  Afterwards,
+edit <yourproject>/settings.py to add "swingtix.bookkeeper" to INSTALLED_APPS and run:: 
 
-    $ django-admin.py startproject myproject
-    $ django-admin.py startproject myproject
+    $ python manage.py syncdb 
 
-First, create a couple of accounts:: 
+Then you're ready to start exploring using the shell::
+
+    $ python manage.py shell
+
+First, let's create a couple of accounts:: 
 
     >>> from swingtix.bookkeeper.models import BookSet, Account
 
