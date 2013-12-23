@@ -4,7 +4,7 @@ from setuptools import find_packages
 
 setup(
     name='swingtix-bookkeeper',
-    version='0.0.1',
+    version='0.0.1.1',
     author=u'Geoff Oakham',
     author_email=u'geoff.oakham@swingtix.ca',
     packages=find_packages(),

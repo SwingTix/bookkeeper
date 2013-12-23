@@ -1,3 +1,3 @@
-include CHANGES README LICENSE
+include CHANGES.rst README.rst LICENSE
 recursive-include swingtix/bookkeeper *.py *.html *.js
 
