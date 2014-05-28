@@ -190,7 +190,7 @@ class Transaction(models.Model):
         help_text="""The project for this transaction (if any).""", null=True)
 
     def __unicode__(self):
-        return "<Transaction {0}: {1}/>".format(self.description)
+        return "<Transaction {0}: {1}/>".format(self.tid, self.description)
 
 #questionable use of natural_keys?
 class AccountEntryManager(models.Manager):
