@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-import datetime
+from django.utils import timezone
 from django.db import models
 from .account_api import AccountBase, BookSetBase, ProjectBase
 
@@ -183,7 +183,7 @@ class Transaction(models.Model):
 
     tid = models.AutoField(primary_key=True)
 
-    t_stamp = models.DateTimeField(default=datetime.datetime.now)
+    t_stamp = models.DateTimeField(default=timezone.now)
     description = models.TextField()
 
     project = models.ForeignKey(Project, related_name="transactions",
