@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-import datetime
+from django.utils import timezone
 from django.db import models
 from .account_api import AccountBase, BookSetBase, ProjectBase
 
@@ -183,14 +183,14 @@ class Transaction(models.Model):
 
     tid = models.AutoField(primary_key=True)
 
-    t_stamp = models.DateTimeField(default=datetime.datetime.now)
+    t_stamp = models.DateTimeField(default=timezone.now)
     description = models.TextField()
 
     project = models.ForeignKey(Project, related_name="transactions",
         help_text="""The project for this transaction (if any).""", null=True)
 
     def __unicode__(self):
-        return "<Transaction {0}: {1}/>".format(self.description)
+        return "<Transaction {0}: {1}/>".format(self.tid, self.description)
 
 #questionable use of natural_keys?
 class AccountEntryManager(models.Manager):
