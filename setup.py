@@ -2,9 +2,11 @@
 from distutils.core import setup
 from setuptools import find_packages
 
+from swingtix import bookkeeper
+
 setup(
     name='swingtix-bookkeeper',
-    version='0.0.1.1',
+    version=bookkeeper.__VERSION__,
     author=u'Geoff Oakham',
     author_email=u'geoff.oakham@swingtix.ca',
     packages=find_packages(),
