@@ -38,10 +38,12 @@ coverage: .coverage
 sdist: version
 	python setup.py sdist
     
-
+#everything except python environments
 clean:
 	rm -Rf .coverage unit_coverage.xml unit_coverage_html
 	rm -Rf *.egg-info htmlcov build dist
+
+fullclean: clean
 	rm -Rf .env.dj_latest
 	rm -Rf .env.dj_previous
 	rm -Rf .env.dj_lts
@@ -51,5 +53,5 @@ clean:
 	PATH=$@/bin:${PATH} pip install -r $<
 
 
-.PHONY: all version coverage
+.PHONY: all version coverage clean fullclean
 
