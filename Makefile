@@ -23,15 +23,24 @@ test_lts: version .env.dj_lts
 .coverage: test .env.dj_latest
 	PATH=.env.dj_latest/bin:${PATH} coverage run --source=swingtix ./manage.py test swingtix.bookkeeper
 
-coverage.xml: .coverage .env.dj_latest
-	PATH=.env.dj_latest/bin:${PATH} coverage xml -o coverage.xml
+#jenkins, etc.
+unit_coverage.xml: .coverage .env.dj_latest
+	PATH=.env.dj_latest/bin:${PATH} coverage xml -o $@
+
+#Go/html
+unit_coverage_html: .coverage .env.dj_latest
+	PATH=.env.dj_latest/bin:${PATH} coverage html -d $@
+
+#human
+coverage: .coverage
+	PATH=.env.dj_latest/bin:${PATH} coverage report
 
 sdist: version
 	python setup.py sdist
     
 
 clean:
-	rm -f .coverage coverage.xml
+	rm -Rf .coverage unit_coverage.xml unit_coverage_html
 	rm -Rf *.egg-info htmlcov build dist
 	rm -Rf .env.dj_latest
 	rm -Rf .env.dj_previous
@@ -41,5 +50,6 @@ clean:
 	virtualenv --no-site-packages $@
 	PATH=$@/bin:${PATH} pip install -r $<
 
-.PHONY: all version
+
+.PHONY: all version coverage
 
