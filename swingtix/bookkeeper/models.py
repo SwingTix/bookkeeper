@@ -94,7 +94,8 @@ class Account(models.Model, _AccountApi):
 
     positive_credit = models.BooleanField(
         """credit entries increase the value of this account.  Set to False for
-        Asset & Expense accounts, True for Liability, Revenue and Equity accounts.""")
+        Asset & Expense accounts, True for Liability, Revenue and Equity accounts.""",
+        default=False)
 
     name = models.TextField() #slugish?  Unique?
     description = models.TextField(blank=True)
