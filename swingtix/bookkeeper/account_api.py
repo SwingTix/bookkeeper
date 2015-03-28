@@ -16,10 +16,10 @@ ThirdParty must implement:
 """
 
 from __future__ import unicode_literals
-from collections import namedtuple
 from decimal import Decimal
 from django.db.models import Sum
 from django.db import transaction
+
 
 class LedgerEntry(object):
     """ A read-only AccountEntry representation.
@@ -59,7 +59,7 @@ class LedgerEntry(object):
             return None
 
     @property
-    def credit(self): 
+    def credit(self):
         if self._amount < 0:
             return -self._amount
         else:
@@ -99,9 +99,10 @@ class LedgerEntry(object):
         for ae in t.entries.all():
             if ae != self._e:
                 amount = ae.amount * ae.account._DEBIT_IN_DB()
-                l.append( (amount, ae.account) )
+                l.append((amount, ae.account))
 
         return l
+
 
 class AccountBase(object):
     """ Implements a high-level account interface.
@@ -110,23 +111,23 @@ class AccountBase(object):
     _positive_credit.  They may also wish to override _DEBIT_IN_DB.
     """
 
-    def _make_ae(self, amount, memo, tx): # pragma: no coverage
+    def _make_ae(self, amount, memo, tx):  # pragma: no coverage
         "Create an AccountEntry with the given data."
         raise NotImplementedError()
 
-    def _new_transaction(self): # pragma: no coverage
+    def _new_transaction(self):  # pragma: no coverage
         "Create a new transaction"
         raise NotImplementedError()
 
-    def _entries(self): # pragma: no coverage
+    def _entries(self):  # pragma: no coverage
         "Return a queryset of the relevant AccountEntries."
         raise NotImplementedError()
 
-    def _positive_credit(self): # pragma: no coverage
+    def _positive_credit(self):  # pragma: no coverage
         "Does this account consider credit positive?  (Return False for Asset & Expense accounts, True for Liability, Revenue and Equity accounts.) "
         raise NotImplementedError()
 
-    def get_bookset(self): # pragma: no coverage
+    def get_bookset(self):  # pragma: no coverage
         raise NotImplementedError()
 
     #If, by historical accident, debits are negative and credits are positive in the database, set this to -1.  By default
@@ -143,6 +144,7 @@ class AccountBase(object):
 
         assert amount >= 0
         return self.post(amount, credit_account, description, self_memo=debit_memo, other_memo=credit_memo, datetime=datetime)
+
     def credit(self, amount, debit_account, description, debit_memo="", credit_memo="", datetime=None):
         """ Post a credit of 'amount' and a debit of -amount against this account and credit_account respectively.
 
@@ -169,12 +171,12 @@ class AccountBase(object):
         tx.description = description
         tx.save()
 
-        a1 = self._make_ae(self._DEBIT_IN_DB()*amount, self_memo, tx)
+        a1 = self._make_ae(self._DEBIT_IN_DB() * amount, self_memo, tx)
         a1.save()
-        a2 = other_account._make_ae(-self._DEBIT_IN_DB()*amount, other_memo, tx)
+        a2 = other_account._make_ae(-self._DEBIT_IN_DB() * amount, other_memo, tx)
         a2.save()
 
-        return (a1,a2)
+        return (a1, a2)
 
     def balance(self, date=None):
         """ returns the account balance as of 'date' (datetime stamp) or now().  """
@@ -189,7 +191,7 @@ class AccountBase(object):
         if self._positive_credit():
             flip *= -1
 
-        if b == None:
+        if b is None:
             b = Decimal("0.00")
         b *= flip
 
@@ -232,13 +234,14 @@ class AccountBase(object):
         def helper(balance_in):
             balance = balance_in
             for e in qs.all():
-                amount = e.amount*DEBIT_IN_DB
+                amount = e.amount * DEBIT_IN_DB
                 o_balance = balance
-                balance += flip*amount
+                balance += flip * amount
 
                 yield LedgerEntry(amount, e, o_balance, balance)
 
         return helper(balance)
+
 
 class ThirdPartySubAccount(AccountBase):
     """ A proxy account that behaves like a third party account. It passes most
@@ -272,11 +275,12 @@ class ThirdPartySubAccount(AccountBase):
     def _positive_credit(self):
         return self._parent._positive_credit()
 
-    def _DEBIT_IN_DB(self): 
+    def _DEBIT_IN_DB(self):
         return self._parent._DEBIT_IN_DB()
 
     def __str__(self):
         return """<ThirdPartySubAccount for tp {0}>""".format(self._third_party)
+
 
 class ProjectAccount(ThirdPartySubAccount):
     """ A proxy account that behaves like its parent account except isolates transactions for
@@ -306,13 +310,14 @@ class ProjectAccount(ThirdPartySubAccount):
     def __str__(self):
         return """<ProjectAccount for bookset {0} tp {1}>""".format(self.get_bookset(), self._third_party)
 
+
 class BookSetBase(object):
     """ Base account for BookSet-like-things, such as BookSets and Projects.
 
     children must implement accounts()
     """
 
-    def accounts(self): # pragma: no coverage
+    def accounts(self):  # pragma: no coverage
         """Returns a sequence of account objects belonging to this bookset."""
         raise NotImplementedError()
 
@@ -322,16 +327,16 @@ class BookSetBase(object):
         assert actual_account.get_bookset() == self
         return ThirdPartySubAccount(actual_account, third_party=third_party)
 
+
 class ProjectBase(BookSetBase):
     """ Base account for Projects.
 
     Children must implement: get_bookset() and accounts()
     """
 
-    def get_bookset(self): # pragma: no coverage
+    def get_bookset(self):  # pragma: no coverage
         """Returns the the parent (main) bookset """
         raise NotImplementedError()
-
 
     def get_account(self, name):
         actual_account = self.get_bookset().get_account(name)
@@ -343,4 +348,3 @@ class ProjectBase(BookSetBase):
 
         assert actual_account.get_bookset() == self.get_bookset()
         return ProjectAccount(actual_account, project=self, third_party=third_party)
-

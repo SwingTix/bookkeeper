@@ -19,7 +19,7 @@ setup(
     tests_require=[
         'django>=1.5,<1.7',
     ],
-   classifiers=[
+    classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
@@ -33,7 +33,3 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
 )
-
-
-
-

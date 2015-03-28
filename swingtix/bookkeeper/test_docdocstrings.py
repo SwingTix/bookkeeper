@@ -2,7 +2,8 @@
 import os
 import unittest
 
-def load_tests(loader,tests,pattern):
+
+def load_tests(loader, tests, pattern):
 
     readme_rst = "../../README.rst"
     readme_rst_relative = os.path.join(os.path.dirname(__file__), readme_rst)
@@ -14,4 +15,3 @@ def load_tests(loader,tests,pattern):
     else:
         print "skipping documentation tests: README.rst not found."
         return unittest.TestSuite()
-
