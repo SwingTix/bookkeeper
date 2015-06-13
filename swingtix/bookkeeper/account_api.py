@@ -17,8 +17,8 @@ ThirdParty must implement:
 
 from __future__ import unicode_literals
 from decimal import Decimal
-from django.db.models import Sum
 from django.db import transaction
+from django.db.models import Sum
 
 
 class LedgerEntry(object):
@@ -153,7 +153,7 @@ class AccountBase(object):
         assert amount >= 0
         return self.post(-amount, debit_account, description, self_memo=credit_memo, other_memo=debit_memo, datetime=datetime)
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def post(self, amount, other_account, description, self_memo="", other_memo="", datetime=None):
         """ Post a transaction of 'amount' against this account and the negative amount against 'other_account'.
 
