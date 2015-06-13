@@ -18,7 +18,7 @@ test_previous: version .env.dj_previous
 	PATH=.env.dj_previous/bin:${PATH} python -Wall ./manage.py test swingtix.bookkeeper
 
 test_lts: version .env.dj_lts
-	PATH=.env.dj_lts/bin:${PATH}      python -Wall ./manage.py test bookkeeper
+	PATH=.env.dj_lts/bin:${PATH}      python -Wall ./manage.py test swingtix.bookkeeper
 
 .coverage: test .env.dj_latest
 	PATH=.env.dj_latest/bin:${PATH} coverage run --source=swingtix ./manage.py test swingtix.bookkeeper
