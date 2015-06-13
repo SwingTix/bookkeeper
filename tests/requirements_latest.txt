@@ -1,4 +1,4 @@
-Django>=1.7,<1.7.99
+Django>=1.8,<1.8.99
 pytz
 db-sqlite3
 coverage

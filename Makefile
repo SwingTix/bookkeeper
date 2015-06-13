@@ -31,6 +31,9 @@ unit_coverage.xml: .coverage .env.dj_latest
 unit_coverage_html: .coverage .env.dj_latest
 	PATH=.env.dj_latest/bin:${PATH} coverage html -d $@
 
+lint:
+	pylint swingtix/bookkeeper
+
 #human
 coverage: .coverage
 	PATH=.env.dj_latest/bin:${PATH} coverage report
