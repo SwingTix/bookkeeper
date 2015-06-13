@@ -3,6 +3,5 @@ build
 dist
 *.egg-info
 .coverage
-unit_coverage.xml
-unit_coverage_html
-.env.*
+coverage.xml
+htmlcov
