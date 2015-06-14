@@ -3,9 +3,11 @@ from django.utils import timezone
 from django.db import models
 from .account_api import AccountBase, BookSetBase, ProjectBase
 
+
 class _AccountApi(AccountBase):
     def _new_transaction(self):
         return Transaction()
+
 
 class BookSet(models.Model, BookSetBase):
     """A set of accounts for an organization.  On desktop accounting software,
@@ -32,6 +34,7 @@ class BookSet(models.Model, BookSetBase):
     def __unicode__(self):
         return self.description
 
+
 class Project(models.Model, ProjectBase):
     """A sub-set of a BookSet.
 
@@ -50,7 +53,6 @@ class Project(models.Model, ProjectBase):
     bookset = models.ForeignKey(BookSet, related_name="projects",
         help_text="""The bookset for this project.""")
 
-
     def accounts(self):
         return self.bookset.accounts()
 
@@ -65,7 +67,8 @@ class Project(models.Model, ProjectBase):
 
     def __unicode__(self):
         return '<Project {0}>'.format(self.name)
- 
+
+
 class Account(models.Model, _AccountApi):
     """ A financial account in a double-entry bookkeeping bookset.  For example
     a chequing account, or bank-fee expense account.
@@ -83,7 +86,7 @@ class Account(models.Model, _AccountApi):
     #
     #    organizing accounts into a tree: generally accepted practice groups accounts into
     #    the categories "Assets", "Liabilities", "Expenses", "Income" and "Capital/equity";
-    #    and bookkeepers like to further sub-divide their accounts.  It would be nice to 
+    #    and bookkeepers like to further sub-divide their accounts.  It would be nice to
     #    support this kind of organization.
 
     accid = models.AutoField(primary_key=True)
@@ -96,7 +99,7 @@ class Account(models.Model, _AccountApi):
         """credit entries increase the value of this account.  Set to False for
         Asset & Expense accounts, True for Liability, Revenue and Equity accounts.""")
 
-    name = models.TextField() #slugish?  Unique?
+    name = models.TextField()  # slugish?  Unique?
     description = models.TextField(blank=True)
 
     #functions needed by _AccountApi
@@ -107,23 +110,28 @@ class Account(models.Model, _AccountApi):
         ae.amount = amount
         ae.description = memo
         return ae
-    def _entries(self): return self.entries
-    def _positive_credit(self): return self.positive_credit
+
+    def _entries(self):
+        return self.entries
+
+    def _positive_credit(self):
+        return self.positive_credit
 
     def __unicode__(self):
         return '{0} {1}'.format(self.bookset.description, self.name)
+
 
 class ThirdParty(models.Model):
     """Represents a third party (eg. Account Receivable or Account Payable).
 
     (Question: using only the ORM, how do I get a third party's balance?
     account.entries.filter(third_party=self).sum()? )
-    
+
     Each third party is associated with a bookkeeping account (traditionally
     either the AR or AP account).  A third party's account can be accessed by
     calling "get_third_party(thid_party)" on the asscoiated account.  This also
     works in combination with Projects: call get_third_party from the project's
-    AR and AP accounts instead of the global ones. 
+    AR and AP accounts instead of the global ones.
 
     This is a simplified accounting model for client and vendor accounts: a
     simple sub-account of "Accounts Receivable" or "Accounts Payable", that
@@ -146,8 +154,8 @@ class ThirdParty(models.Model):
             debugging.  It's best to use a OneToOne relationship with another
             tabel to hold all the information you actually need.""")
 
-    account = models.ForeignKey(Account, related_name="third_parties", 
-        help_text= """The parent account: typically an 'AR' or 'AP' account.""")
+    account = models.ForeignKey(Account, related_name="third_parties",
+        help_text="""The parent account: typically an 'AR' or 'AP' account.""")
 
     def get_account(self):
         return self.account
@@ -162,7 +170,8 @@ class ThirdParty(models.Model):
 
     def __unicode__(self):
         return '<ThirdParty {0} {1}>'.format(self.name, self.id)
- 
+
+
 class Transaction(models.Model):
     """ A transaction is a collection of AccountEntry rows (for different
     accounts) that sum to zero.
@@ -174,7 +183,7 @@ class Transaction(models.Model):
     are best avoided because it's more difficult to import those transactions
     into other financial software.
 
-    Invarients: 
+    Invarients:
         1. All entries for each transaction transaction must add up to zero.
         (This invarient may be enforced in the future.)
 
@@ -192,10 +201,12 @@ class Transaction(models.Model):
     def __unicode__(self):
         return "<Transaction {0}: {1}/>".format(self.tid, self.description)
 
+
 #questionable use of natural_keys?
 class AccountEntryManager(models.Manager):
-    def get_by_natural_key(self, account,transaction):
+    def get_by_natural_key(self, account, transaction):
         return self.get(account=account, transaction=transaction)
+
 
 class AccountEntry(models.Model):
     """A line entry changing the balance of an account.
@@ -213,6 +224,7 @@ class AccountEntry(models.Model):
 
     class Meta:
         unique_together= (('account', 'transaction'),)
+
     def natural_key(self):
         return (self.transaction.pk,) + self.account.natural_key()
 
@@ -220,11 +232,11 @@ class AccountEntry(models.Model):
 
     aeid = models.AutoField(primary_key=True)
 
-    transaction = models.ForeignKey(Transaction, db_column='tid',related_name='entries')
+    transaction = models.ForeignKey(Transaction, db_column='tid', related_name='entries')
 
     account = models.ForeignKey(Account, db_column='accid', related_name='entries')
 
-    amount = models.DecimalField(max_digits=8,decimal_places=2,
+    amount = models.DecimalField(max_digits=8, decimal_places=2,
         help_text="""Debits: positive; Credits: negative.""")
 
     description = models.TextField(
@@ -233,7 +245,6 @@ class AccountEntry(models.Model):
     third_party = models.ForeignKey(ThirdParty, related_name='account_entries', null=True)
 
     def __unicode__(self):
-        base =  "%d %s" % (self.amount, self.description)
+        base = "%d %s" % (self.amount, self.description)
 
         return base
-
