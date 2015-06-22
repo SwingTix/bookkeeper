@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.0.2
+-----
+
+- django 1.8-compatible tests
+
 0.0.1
 -----
 
