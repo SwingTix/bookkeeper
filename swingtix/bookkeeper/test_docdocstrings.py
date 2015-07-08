@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import os
 import unittest
@@ -13,5 +14,5 @@ def load_tests(loader, tests, pattern):
         tests.addTests(doctest.DocFileSuite(readme_rst))
         return tests
     else:  # pragma: no coverage
-        print "skipping documentation tests: README.rst not found."
+        print("skipping documentation tests: README.rst not found.")
         return unittest.TestSuite()

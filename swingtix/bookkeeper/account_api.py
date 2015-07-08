@@ -16,11 +16,14 @@ ThirdParty must implement:
 """
 
 from __future__ import unicode_literals
+from future.utils import python_2_unicode_compatible
+from builtins import object
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum
 
 
+@python_2_unicode_compatible
 class LedgerEntry(object):
     """ A read-only AccountEntry representation.
 
@@ -35,9 +38,9 @@ class LedgerEntry(object):
 
     def __str__(self):
         if self._amount > 0:
-            return u"<ledger entry {0}Dr {1} {2}>".format(self.debit, self.time, self.description)
+            return "<ledger entry {0}Dr {1} {2}>".format(self.debit, self.time, self.description)
         else:
-            return u"<ledger entry {0}Cr {1} {2}>".format(self.credit, self.time, self.description)
+            return "<ledger entry {0}Cr {1} {2}>".format(self.credit, self.time, self.description)
 
     @property
     def time(self):
@@ -243,6 +246,7 @@ class AccountBase(object):
         return helper(balance)
 
 
+@python_2_unicode_compatible
 class ThirdPartySubAccount(AccountBase):
     """ A proxy account that behaves like a third party account. It passes most
     of its responsibilities to a parent account.
@@ -282,6 +286,7 @@ class ThirdPartySubAccount(AccountBase):
         return """<ThirdPartySubAccount for tp {0}>""".format(self._third_party)
 
 
+@python_2_unicode_compatible
 class ProjectAccount(ThirdPartySubAccount):
     """ A proxy account that behaves like its parent account except isolates transactions for
     to a project.  It passes most of its responsibilities to a parent account.
