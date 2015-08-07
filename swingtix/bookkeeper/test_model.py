@@ -130,23 +130,44 @@ class SimpleTest(TestCase):
                 debit=None, credit=Decimal("1.75"),
                 opening=Decimal("11.65"), closing=Decimal("9.90")),
         ])
+        totals = self.bank.totals(d1, d4)
+        self.assertEqual(totals.debits, Decimal("12.00"))
+        self.assertEqual(totals.credits, Decimal("2.10"))
+        self.assertEqual(totals.net, Decimal("9.90"))
 
         self.assertEqualLedgers(list(self.expense.ledger()), [
             AccountEntryTuple(d1, "jawbreaker", "", Decimal("0.35"), None, Decimal("0.00"), Decimal("0.35"), None),
             AccountEntryTuple(d3, "soft drink for myself", "", Decimal("1.75"), None, Decimal("0.35"), Decimal("2.10"), None),
         ])
+        totals = self.expense.totals(d1, d4)
+        self.assertEqual(totals.debits, Decimal("2.10"))
+        self.assertEqual(totals.credits, Decimal("0.00"))
+        self.assertEqual(totals.net, Decimal("2.10"))
+
         self.assertEqualLedgers(list(self.revenue.ledger()), [
             AccountEntryTuple(d2, "Membership purchased in cash", "", None, Decimal("12.00"), Decimal("0.00"), Decimal("12.00"), None),
         ])
+        totals = self.revenue.totals(d1, d4)
+        self.assertEqual(totals.debits, Decimal("0.00"))
+        self.assertEqual(totals.credits, Decimal("12.00"))
+        self.assertEqual(totals.net, Decimal("12.00"))
 
         self.assertEqualLedgers(list(self.bank.ledger(start=d2)), [
             AccountEntryTuple(d2, "Membership purchased in cash", "", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
             AccountEntryTuple(d3, "soft drink for myself", "", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
         ])
+        totals = self.bank.totals(d2, d4)
+        self.assertEqual(totals.debits, Decimal("12.00"))
+        self.assertEqual(totals.credits, Decimal("1.75"))
+        self.assertEqual(totals.net, Decimal("10.25"))
 
         self.assertEqualLedgers(list(self.bank.ledger(start=d3)), [
             AccountEntryTuple(d3, "soft drink for myself", "", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
         ])
+        totals = self.bank.totals(d3, d4)
+        self.assertEqual(totals.debits, Decimal("0.00"))
+        self.assertEqual(totals.credits, Decimal("1.75"))
+        self.assertEqual(totals.net, Decimal("-1.75"))
 
         self.assertEqualLedgers(list(self.bank.ledger(end=d4)), [
             AccountEntryTuple(d1, "jawbreaker", "", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
@@ -158,25 +179,50 @@ class SimpleTest(TestCase):
             AccountEntryTuple(d1, "jawbreaker", "", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
             AccountEntryTuple(d2, "Membership purchased in cash", "", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
         ])
+        totals = self.bank.totals(d1, d3)
+        self.assertEqual(totals.debits, Decimal("12.00"))
+        self.assertEqual(totals.credits, Decimal("0.35"))
+        self.assertEqual(totals.net, Decimal("11.65"))
 
         self.assertEqualLedgers(list(self.bank.ledger(end=d2)), [
             AccountEntryTuple(d1, "jawbreaker", "", None, Decimal("0.35"), Decimal("0.00"), Decimal("-0.35"), None),
         ])
+        totals = self.bank.totals(d1, d2)
+        self.assertEqual(totals.debits, Decimal("0.00"))
+        self.assertEqual(totals.credits, Decimal("0.35"))
+        self.assertEqual(totals.net, Decimal("-0.35"))
 
         self.assertEqualLedgers(list(self.bank.ledger(end=d1)), [
         ])
+        totals = self.bank.totals(d0, d1)
+        self.assertEqual(totals.debits, Decimal("0.00"))
+        self.assertEqual(totals.credits, Decimal("0.00"))
+        self.assertEqual(totals.net, Decimal("0.00"))
 
         self.assertEqualLedgers(list(self.bank.ledger(start=d2, end=d3)), [
             AccountEntryTuple(d2, "Membership purchased in cash", "", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
         ])
+        totals = self.bank.totals(d2, d3)
+        self.assertEqual(totals.debits, Decimal("12.00"))
+        self.assertEqual(totals.credits, Decimal("0.00"))
+        self.assertEqual(totals.net, Decimal("12.00"))
 
         self.assertEqualLedgers(list(self.bank.ledger(start=d3, end=d4)), [
             AccountEntryTuple(d3, "soft drink for myself", "", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
         ])
+        totals = self.bank.totals(d3, d4)
+        self.assertEqual(totals.debits, Decimal("0.00"))
+        self.assertEqual(totals.credits, Decimal("1.75"))
+        self.assertEqual(totals.net, Decimal("-1.75"))
+
         self.assertEqualLedgers(list(self.bank.ledger(start=d2, end=d4)), [
             AccountEntryTuple(d2, "Membership purchased in cash", "", Decimal("12.00"), None, Decimal("-0.35"), Decimal("11.65"), None),
             AccountEntryTuple(d3, "soft drink for myself", "", None, Decimal("1.75"), Decimal("11.65"), Decimal("9.90"), None),
         ])
+        totals = self.bank.totals(d2, d4)
+        self.assertEqual(totals.debits, Decimal("12.00"))
+        self.assertEqual(totals.credits, Decimal("1.75"))
+        self.assertEqual(totals.net, Decimal("10.25"))
 
         #check that "other leg" feature works
         l_entries=list(self.bank.ledger())

@@ -23,6 +23,10 @@ test_lts: version .env.dj_lts
 .coverage: test .env.dj_latest
 	PATH=.env.dj_latest/bin:${PATH} coverage run --source=swingtix ./manage.py test swingtix.bookkeeper
 
+.PHONY: wheel
+wheel: version .env.dj_latest
+	.env.dj_latest/bin/python setup.py bdist_wheel
+
 #jenkins, etc.
 unit_coverage.xml: .coverage .env.dj_latest
 	PATH=.env.dj_latest/bin:${PATH} coverage xml -o $@
