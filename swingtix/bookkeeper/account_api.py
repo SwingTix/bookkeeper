@@ -16,15 +16,18 @@ ThirdParty must implement:
 """
 
 from __future__ import unicode_literals
+from future.utils import python_2_unicode_compatible
+from builtins import object
+from collections import namedtuple
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum
 
 
+@python_2_unicode_compatible
 class LedgerEntry(object):
     """ A read-only AccountEntry representation.
 
-    (replaces namedtuple('AccountEntryTuple', 'time description memo debit credit opening closing txid') )
      """
 
     def __init__(self, normalized_amount, ae, opening, closing):
@@ -35,9 +38,9 @@ class LedgerEntry(object):
 
     def __str__(self):
         if self._amount > 0:
-            return u"<ledger entry {0}Dr {1} {2}>".format(self.debit, self.time, self.description)
+            return "<ledger entry {0}Dr {1} {2}>".format(self.debit, self.time, self.description)
         else:
-            return u"<ledger entry {0}Cr {1} {2}>".format(self.credit, self.time, self.description)
+            return "<ledger entry {0}Cr {1} {2}>".format(self.credit, self.time, self.description)
 
     @property
     def time(self):
@@ -198,6 +201,49 @@ class AccountBase(object):
         #print "returning balance %s for %s" % (b, self)
         return b
 
+    def _entries_range(self, start=None, end=None):
+        qs = self._entries()
+        if start:
+            qs = qs.filter(transaction__t_stamp__gte=start)
+        if end:
+            qs = qs.filter(transaction__t_stamp__lt=end)
+        qs = qs.order_by("transaction__t_stamp", "transaction__tid")
+
+        return qs
+
+    #TODO: Wanted: a good accounting term for sums of credits and debits over
+    #a time period.
+    #   - cashflow? No necessarily cash
+    #   - transactions? How is it different from entries or ledger?
+    Totals = namedtuple('Totals', ['credits', 'debits', 'net'])
+    def totals(self, start=None, end=None):
+        """Returns a Totals object containing the sum of all debits, credits
+        and net change over the period of time from start to end.
+
+        'start' is inclusive, 'end' is exclusive
+        """
+
+        qs = self._entries_range(start=start, end=end)
+        qs_positive = qs.filter(amount__gt=Decimal("0.00")).all().aggregate(Sum('amount'))
+        qs_negative = qs.filter(amount__lt=Decimal("0.00")).all().aggregate(Sum('amount'))
+
+        #Is there a cleaner way of saying this?  Should the sum of 0 things be None?
+        positives = qs_positive['amount__sum'] if qs_positive['amount__sum'] is not None else 0
+        negatives = -qs_negative['amount__sum'] if qs_negative['amount__sum'] is not None else 0
+
+        if self._DEBIT_IN_DB() > 0:
+            debits = positives
+            credits = negatives
+        else:
+            debits = negatives
+            credits = positives
+
+        net = debits-credits
+        if self._positive_credit():
+            net = -net
+
+        return self.Totals(credits, debits, net)
+
     def ledger(self, start=None, end=None):
         """Returns a list of entries for this account.
 
@@ -218,14 +264,12 @@ class AccountBase(object):
         if self._positive_credit():
             flip *= -1
 
-        qs = self._entries()
+        qs = self._entries_range(start=start, end=end)
+        qs = qs.order_by("transaction__t_stamp", "transaction__tid")
+
         balance = Decimal("0.00")
         if start:
             balance = self.balance(start)
-            qs = qs.filter(transaction__t_stamp__gte=start)
-        if end:
-            qs = qs.filter(transaction__t_stamp__lt=end)
-        qs = qs.order_by("transaction__t_stamp", "transaction__tid")
 
         if not qs:
             return []
@@ -243,6 +287,7 @@ class AccountBase(object):
         return helper(balance)
 
 
+@python_2_unicode_compatible
 class ThirdPartySubAccount(AccountBase):
     """ A proxy account that behaves like a third party account. It passes most
     of its responsibilities to a parent account.
@@ -282,6 +327,7 @@ class ThirdPartySubAccount(AccountBase):
         return """<ThirdPartySubAccount for tp {0}>""".format(self._third_party)
 
 
+@python_2_unicode_compatible
 class ProjectAccount(ThirdPartySubAccount):
     """ A proxy account that behaves like its parent account except isolates transactions for
     to a project.  It passes most of its responsibilities to a parent account.

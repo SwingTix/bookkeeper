@@ -1,4 +1,6 @@
-Django>=1.8,<1.8.99
-pytz
-db-sqlite3
 coverage
+db-sqlite3
+Django>=1.8,<1.8.99
+future
+pytz
+wheel
