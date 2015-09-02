@@ -16,6 +16,9 @@ setup(
     long_description=open('README.rst').read(),
     zip_safe=False,
     include_package_data=True,
+    install_requires=[
+        'future',
+    ],
     tests_require=[
         'django>=1.5,<1.7',
     ],
