@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 from builtins import str
 from builtins import range
 
+from django.db import IntegrityError
 from django.test import TestCase
 
 from .models import BookSet, Account, ThirdParty, Project
@@ -328,7 +329,6 @@ class SimpleTest(TestCase):
             description="Revenue",
             positive_credit=True,
         )
-        revenue.save()
 
         bank=Account.objects.create(
             bookset=book,
@@ -336,7 +336,6 @@ class SimpleTest(TestCase):
             description="Bank Account",
             positive_credit=False
         )
-        bank.save()
 
         ar=Account.objects.create(
             bookset=book,
@@ -344,7 +343,6 @@ class SimpleTest(TestCase):
             description="Accounts Receivable",
             positive_credit=False
         )
-        ar.save()
 
         expense=Account.objects.create(
             bookset=book,
@@ -352,7 +350,6 @@ class SimpleTest(TestCase):
             description="Expenses",
             positive_credit=False
         )
-        expense.save()
 
         e2=book.get_account("expense")
         self.assertEqual(e2, expense)
@@ -559,3 +556,7 @@ class SimpleTest(TestCase):
         self.assertEqual(rev.balance(), Decimal("14.72"))
         self.assertEqual(revA.balance(), Decimal("16.53"))
         self.assertEqual(revB.balance(), Decimal("-1.81"))
+
+    def test_duplicate_accounts(self):
+        with self.assertRaises(IntegrityError):
+            Account.objects.create(bookset=self.book, name="bank")  # already exists
