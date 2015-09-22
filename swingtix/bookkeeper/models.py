@@ -107,6 +107,9 @@ class Account(models.Model, _AccountApi):
     name = models.TextField()  # slugish?  Unique?
     description = models.TextField(blank=True)
 
+    class Meta(object):
+        unique_together = ('bookset', 'name')
+
     #functions needed by _AccountApi
     def _make_ae(self, amount, memo, tx):
         ae = AccountEntry()
