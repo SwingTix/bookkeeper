@@ -4,3 +4,4 @@ Django>=1.8,<1.8.99
 future
 pytz
 wheel
+semver

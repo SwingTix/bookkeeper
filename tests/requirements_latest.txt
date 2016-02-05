@@ -1,6 +1,7 @@
 coverage
 db-sqlite3
-Django>=1.8,<1.8.99
+Django>=1.9,<1.9.99
 future
 pytz
 wheel
+semver

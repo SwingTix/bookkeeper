@@ -1,11 +1,21 @@
 
 GIT_VERSION:=$(shell git describe --tags --dirty=M)
+GIT_VERSION_NODIRTY:=$(shell git describe --tags)
+NEXT_VERSION=`.env.dj_latest/bin/python -c 'import semver; print semver.bump_patch("$(GIT_VERSION_NODIRTY)")'`
+
 
 all: sdist
 	echo "__VERSION__='$(GIT_VERSION)'" > swingtix/bookkeeper/__init__.py
 
 version: 
 	echo "__VERSION__='$(GIT_VERSION)'" > swingtix/bookkeeper/__init__.py
+
+bumpversion: .env.dj_latest
+	echo "Bumping to $(NEXT_VERSION)"
+	@echo "__VERSION__='$(NEXT_VERSION)'" > swingtix/bookkeeper/__init__.py
+	@git commit -m "bump to $(NEXT_VERSION)" swingtix/bookkeeper/__init__.py
+	@git tag $(NEXT_VERSION)
+
 
 test: test_latest
 
