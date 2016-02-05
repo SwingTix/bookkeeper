@@ -31,6 +31,7 @@ class LedgerEntry(object):
      """
 
     def __init__(self, normalized_amount, ae, opening, closing):
+        assert ae != None
         self._e = ae
         self._opening = opening
         self._closing = closing
